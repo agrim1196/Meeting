@@ -1,16 +1,10 @@
 ﻿namespace WebApi.Helpers;
-
-using Azure.Core;
-using Azure.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System.IdentityModel.Tokens.Jwt;
-using System.Net;
 using System.Text;
-using System.Text.RegularExpressions;
 using WebApi.Services;
 
 public class JwtMiddleware
@@ -26,47 +20,48 @@ public class JwtMiddleware
 
     public async Task Invoke(HttpContext context, IUsersService userService)
     {
-        try {
+        try
+        {
             var model = new TokenModel();
             // first time true
             var signInRequest = context.Request.Headers["Is-Sign-In"].FirstOrDefault();
 
             // first time token will we null
-            string tokenString = context.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
+            string? tokenString = context.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
             if (tokenString is not null)
             {
                 var startTokenIndex = tokenString.IndexOf('{');
                 var endTokenIndex = tokenString.LastIndexOf('}');
                 var tokenData = tokenString.Substring(startTokenIndex, endTokenIndex - startTokenIndex + 1);
                 var dictionary = JsonConvert.DeserializeObject<Dictionary<string, string>>(tokenData);
-
-                int id = int.Parse(dictionary["id"]);
-                string username = dictionary["username"];
-                string token = dictionary["token"];
+                int id = 0;
+                int.TryParse(dictionary?["id"], out id);
+                string? username = dictionary?["username"];
+                string? token = dictionary?["token"];
                 model = new TokenModel
                 {
                     Id = id,
                     Username = username,
                     Token = token
                 };
-                attachUserToContext(context, userService, model.Token);
+                attachUserToContext(model.Token);
             }
 
             await _next(context);
         }
-        catch(Exception ex)
+        catch (Exception)
         {
-            throw ex;
+            throw;
         }
     }
 
-    private IActionResult attachUserToContext(HttpContext context, IUsersService userService, string token)
+    private IActionResult attachUserToContext(string? token)
     {
         try
         {
             var tokenHandler = new JwtSecurityTokenHandler();
             var key = Encoding.ASCII.GetBytes(_appSettings.Secret);
-            var result =  tokenHandler.ValidateToken(token, new TokenValidationParameters
+            var result = tokenHandler.ValidateToken(token, new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
                 IssuerSigningKey = new SymmetricSecurityKey(key),
@@ -79,7 +74,7 @@ public class JwtMiddleware
             var jwtToken = (JwtSecurityToken)validatedToken;
             return new OkObjectResult(jwtToken);
         }
-        catch (SecurityTokenValidationException ex)
+        catch (SecurityTokenValidationException)
         {
             return new BadRequestResult();
         }

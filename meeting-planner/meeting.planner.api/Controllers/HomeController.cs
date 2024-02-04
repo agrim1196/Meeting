@@ -1,14 +1,10 @@
 ﻿using JWTAuth.WebApi.Models;
 using MeetingPlannerAPI.DAL;
 using MeetingPlannerAPI.Model;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sieve.Models;
 using Sieve.Services;
-using System.Globalization;
-using System.Linq;
 using WebApi.Models;
 using WebApi.Services;
 
@@ -35,9 +31,9 @@ namespace MeetingPlannerAPI.Controllers
         }
 
         [HttpPost("authenticate")]
-        public IActionResult Authenticate([FromBody]AuthenticateRequest model)
+        public async Task<IActionResult> Authenticate([FromBody] AuthenticateRequest model)
         {
-            var response = _usersService.Authenticate(model);
+            var response = await _usersService.Authenticate(model);
 
             if (response == null)
                 return BadRequest(new { message = "Username or password is incorrect" });
@@ -47,46 +43,47 @@ namespace MeetingPlannerAPI.Controllers
 
         [HttpGet]
         [Route("employees")]
-        public IQueryable<Employees> GetEmployees()
+        public async Task<List<Employees>> GetEmployees()
         {
 
-            return _empRepo.getAll();
+            return await _empRepo.getAllAsync();
         }
 
         [HttpGet]
         [Route("users")]
-        public IQueryable<Users> GetUsers()
+        public async Task<List<Users>> GetUsers()
         {
-            return _usersRepo.getAll();
+            return await _usersRepo.getAllAsync();
         }
 
-        [HttpGet]
-        [Route("meetingRooms")]
-        public IQueryable<MeetingRooms> GetMeetingRooms(SieveModel sieveModel)
-        {
-            // As no Tracking Makes read-only queries faster
-            // Returns `result` after applying the sort/filter/page query in `SieveModel` to it
-            var result = _sieveProcessor.Apply(sieveModel, _meetingRoom.getAll().AsNoTracking());
-            return result;
-        }
+        // TODO: How to make it asynchronous
+        //[HttpGet]
+        //[Route("meetingRooms")]
+        //public async Task<IQueryable<MeetingRooms>> GetMeetingRooms(SieveModel sieveModel)
+        //{
+        //    // As no Tracking Makes read-only queries faster
+        //    // Returns `result` after applying the sort/filter/page query in `SieveModel` to it
+        //    var result = await _sieveProcessor.Apply(sieveModel, await _meetingRoom.getAllAsync());
+        //    return result;
+        //}
 
         [HttpGet]
         [Route("meetingRoomInformation/{meetingRoomNo}")]
-        public IQueryable<MeetingsPlanned> GetMeetingRoomInformation(int meetingRoomNo)
+        public async Task<IEnumerable<MeetingsPlanned>> GetMeetingRoomInformation(int meetingRoomNo)
         {
-            var result = _meetingsPlannedRepo.getAll().AsNoTracking().Where(planned => planned.RoomNo == meetingRoomNo);
+            var result = (await _meetingsPlannedRepo.getAllAsync()).Where(planned => planned.RoomNo == meetingRoomNo);
             return result;
         }
 
         [HttpGet]
         [Route("plannedMeetings/{selectedDate}")]
-        public IQueryable<MeetingsPlanned> GetPlannedMeetings(DateTime selectedDate)
+        public async Task<IEnumerable<MeetingsPlanned>> GetPlannedMeetings(DateTime selectedDate)
         {
-            var allMeetingRooms = _meetingRoom.getAll();
+            var allMeetingRooms = await _meetingRoom.getAllAsync();
             var dt = selectedDate.Date;
             //var result = _meetingsPlannedRepo.getAll().AsNoTracking().Where(planned => planned.MeetingScheduledOn.Value.Date == dt);
             var result = from v in allMeetingRooms
-                         join u in _meetingsPlannedRepo.getAll().Where(m => m.MeetingScheduledOn.HasValue && m.MeetingScheduledOn.Value.Date == dt) on v.Roomno equals u.RoomNo into joinedRooms
+                         join u in (await _meetingsPlannedRepo.getAllAsync()).Where(m => m.MeetingScheduledOn.HasValue && m.MeetingScheduledOn.Value.Date == dt) on v.Roomno equals u.RoomNo into joinedRooms
                          from m in joinedRooms.DefaultIfEmpty()
                          select new MeetingsPlanned { RoomNo = v.Roomno, MeetingScheduledOn = m.MeetingScheduledOn, NoOfParticipants = v.Capacity };
             //select new MeetingsPlanned{ RoomNo =  v.Roomno  };
@@ -94,25 +91,26 @@ namespace MeetingPlannerAPI.Controllers
         }
 
         [HttpPost]
-        [Route("scheduleMeeting")]
-        public IActionResult ScheduleMeeting(int meetingRoomNo, DateTime meetingDateTime, int meetingHours, int capacity)
+        [Route("scheduleMeeting/{meetingRoomNo}/{meetingDateTime}/{meetingHours}/{capacity}")]
+        public async Task<IActionResult> ScheduleMeetingAsync(int meetingRoomNo, DateTime meetingDateTime, int meetingHours, int capacity)
         {
             // Validate if meeting room no is valid or not 
             //Validating  capacity for the supplied meeting room
-            var allMeetingRoomData = _meetingRoom.getAll();
-            var meetingsPlannedRepo = allMeetingRoomData.Where(meeting => meeting.Roomno == meetingRoomNo && meeting.Capacity <= capacity);
+            var allMeetingRoomData = await _meetingRoom.getAllAsync();
+            var meetingsPlannedRepo = allMeetingRoomData.Where(meeting => meeting.Roomno == meetingRoomNo && capacity <= meeting.Capacity);
             if (!meetingsPlannedRepo.Any())
             {
                 return BadRequest();
             }
+            var allMeetingsPlanned = await _meetingsPlannedRepo.getAllAsync();
 
-
-            var allMeetingsPlanned = _meetingsPlannedRepo.getAll();
-            var plannedDateOverlap = allMeetingsPlanned.Where(planned => planned.RoomNo == meetingRoomNo && DateTime.Now < meetingDateTime && (planned.MeetingScheduledOn < meetingDateTime && planned.MeetingScheduledOn.Value.AddHours(planned.MeetingScheduledFor.Value) < meetingDateTime));
+            var plannedDateOverlap = allMeetingsPlanned.Where(planned => planned.RoomNo == meetingRoomNo
+            && DateTime.Now < meetingDateTime
+            && planned.MeetingScheduledOn.Value.AddHours(planned.MeetingScheduledFor.Value) < meetingDateTime);
             //var plannedDateOverlap = allMeetingsPlanned.Where(planned => planned.MeetingRoomNo == meetingRoomNo && DateTime.Now < meetingDateTime );
 
             //Validate if no meeting is scheduled on the supplied datetime.
-            if (!plannedDateOverlap.Any())
+            if (plannedDateOverlap.Any())
             {
                 return BadRequest();
             }

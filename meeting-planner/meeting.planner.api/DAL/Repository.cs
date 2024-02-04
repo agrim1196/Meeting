@@ -1,5 +1,5 @@
 ﻿using JWTAuth.WebApi.Models;
-using System.Linq;
+using System.Data.Entity;
 
 namespace MeetingPlannerAPI.DAL
 {
@@ -13,17 +13,18 @@ namespace MeetingPlannerAPI.DAL
             _dbContext = dbContext;
         }
 
-        public IQueryable<T> getAll()
+        public async Task<List<T>> getAllAsync()
         {
             try
             {
-                return _dbContext.Set<T>().AsQueryable();
+                return await _dbContext.Set<T>().ToListAsync();
             }
             catch
             {
                 throw;
             }
         }
+
 
         public void Add(T input)
         {

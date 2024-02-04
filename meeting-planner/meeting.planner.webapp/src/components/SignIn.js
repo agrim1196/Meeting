@@ -41,8 +41,8 @@ export default function SignIn() {
           method: "POST",
           headers: header,
           body: JSON.stringify({
-            Username: "test@example.com",
-            Password: "password",
+            Username: formState.email,
+            Password: formState.password,
           }),
         };
 

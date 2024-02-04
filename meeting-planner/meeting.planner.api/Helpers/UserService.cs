@@ -4,6 +4,7 @@ using MeetingPlannerAPI.DAL;
 using MeetingPlannerAPI.Model;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using System.Data.Entity;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -13,7 +14,7 @@ using WebApi.Models;
 
 public interface IUsersService
 {
-    AuthenticateResponse Authenticate(AuthenticateRequest model);
+    Task<AuthenticateResponse> Authenticate(AuthenticateRequest model);
 }
 
 public class UsersService : IUsersService
@@ -26,13 +27,13 @@ public class UsersService : IUsersService
         _usersRepo = usersRepo;
     }
 
-    public AuthenticateResponse Authenticate(AuthenticateRequest model)
+    public async Task<AuthenticateResponse> Authenticate(AuthenticateRequest model)
     {
         // Convert PASSWORD to hash code SHA-256
         var hash = sha256_hash(model.Password);
 
 
-        var Users = _usersRepo.getAll().FirstOrDefault();
+        var Users = (await _usersRepo.getAllAsync()).FirstOrDefault();
         //var Users = _usersRepo.getAll();
         // return null if Users not found
         if (Users == null) return null;

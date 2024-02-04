@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using Sieve.Attributes;
 
 namespace MeetingPlannerAPI.Model;
 
@@ -7,6 +6,7 @@ public partial class MeetingRooms
 {
     public int Id { get; set; }
 
+    [Sieve(CanFilter = true)]
     public int Roomno { get; set; }
 
     public int Capacity { get; set; }

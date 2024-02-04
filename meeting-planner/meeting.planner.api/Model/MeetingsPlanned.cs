@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace MeetingPlannerAPI.Model;
+﻿namespace MeetingPlannerAPI.Model;
 
 public partial class MeetingsPlanned
 {
