@@ -2,8 +2,6 @@
 using MeetingPlannerAPI.DAL;
 using MeetingPlannerAPI.Model;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Sieve.Models;
 using Sieve.Services;
 using WebApi.Models;
 using WebApi.Services;

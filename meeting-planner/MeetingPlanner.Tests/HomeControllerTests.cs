@@ -6,9 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Moq;
 using NUnit.Framework;
 using NUnit.Framework.Legacy;
-using Sieve.Models;
 using Sieve.Services;
-using System.Data.Entity;
 using WebApi.Models;
 using WebApi.Services;
 

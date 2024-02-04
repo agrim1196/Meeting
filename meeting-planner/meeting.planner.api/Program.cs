@@ -1,6 +1,5 @@
 using JWTAuth.WebApi.Models;
 using MeetingPlannerAPI.DAL;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Sieve.Services;
 using WebApi.Helpers;
@@ -11,7 +10,7 @@ string sample = "mypolicy";
 // Add services to the container.
 builder.Services.AddCors(options =>
 {
-    
+
     options.AddPolicy(
         sample,
                       policy =>

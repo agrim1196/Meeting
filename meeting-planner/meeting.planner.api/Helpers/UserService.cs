@@ -4,7 +4,6 @@ using MeetingPlannerAPI.DAL;
 using MeetingPlannerAPI.Model;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using System.Data.Entity;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;

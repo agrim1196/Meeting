@@ -1,5 +1,5 @@
 ﻿using JWTAuth.WebApi.Models;
-using System.Data.Entity;
+using Microsoft.EntityFrameworkCore;
 
 namespace MeetingPlannerAPI.DAL
 {
