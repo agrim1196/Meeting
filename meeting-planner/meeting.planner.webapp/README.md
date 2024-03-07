@@ -1,3 +1,8 @@
+# Initial Setup
+Install latest version of node js. Uninstall first if already exists.
+Restart IDE and then run npm start.
+
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
