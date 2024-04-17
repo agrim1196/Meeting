@@ -2,12 +2,16 @@
 using MeetingPlannerAPI.DAL;
 using MeetingPlannerAPI.Model;
 using Microsoft.AspNetCore.Mvc;
+using Serilog;
 using Sieve.Services;
 using WebApi.Models;
 using WebApi.Services;
 
 namespace MeetingPlannerAPI.Controllers
 {
+    /// <summary>
+    /// Home Controller.
+    /// </summary>
     public class HomeController : ControllerBase
     {
         private readonly IRepository<Employees> _empRepo;
@@ -17,41 +21,81 @@ namespace MeetingPlannerAPI.Controllers
         private readonly SieveProcessor _sieveProcessor;
         private readonly DatabaseContext dbContext;
         private readonly IUsersService _usersService;
-        public HomeController(IUsersService usersService, IRepository<Users> usersRepo, IRepository<Employees> empRepo, IRepository<MeetingRooms> meetingRooms, SieveProcessor sieveProcessor, IRepository<MeetingsPlanned> meetingsPlannedRepo, DatabaseContext _dbContext)
+        private readonly ILogger<HomeController> _logger;
+
+        public HomeController(
+                 IUsersService usersService,
+                 IRepository<Users> usersRepository,
+                 IRepository<Employees> employeeRepository,
+                 IRepository<MeetingRooms> meetingRoomRepository,
+                 SieveProcessor sieveProcessor,
+                 IRepository<MeetingsPlanned> meetingsPlannedRepository,
+                 DatabaseContext dbContext,
+                 ILogger<HomeController> logger)
         {
-            _usersRepo = usersRepo;
-            _empRepo = empRepo;
-            _meetingRoom = meetingRooms;
-            _sieveProcessor = sieveProcessor;
-            _meetingsPlannedRepo = meetingsPlannedRepo;
-            dbContext = _dbContext;
             _usersService = usersService;
+            _usersRepo = usersRepository;
+            _empRepo = employeeRepository;
+            _meetingRoom = meetingRoomRepository;
+            _sieveProcessor = sieveProcessor;
+            _meetingsPlannedRepo = meetingsPlannedRepository;
+            this.dbContext = dbContext;
+            _logger = logger;
         }
 
         [HttpPost("authenticate")]
         public async Task<IActionResult> Authenticate([FromBody] AuthenticateRequest model)
         {
-            var response = await _usersService.Authenticate(model);
-
-            if (response == null)
-                return BadRequest(new { message = "Username or password is incorrect" });
-
-            return Ok(response);
+            try
+            {
+                Log.Information("User Authentication In Process");
+                var response = await _usersService.Authenticate(model);
+                if (response == null)
+                {
+                  return BadRequest(new { message = "Username or password is incorrect" });
+                }
+                Log.Information("User Authentication Successful");
+                return Ok(response);
+            }
+            catch(Exception ex)
+            {
+                Log.Error($"Application returned error: { ex } ");
+                return StatusCode(500, new { error = "Failed to authenticate user" });
+            }
         }
 
         [HttpGet]
         [Route("employees")]
-        public async Task<List<Employees>> GetEmployees()
+        public async Task<IActionResult> GetEmployees()
         {
-
-            return await _empRepo.getAllAsync();
+            try
+            {
+                Log.Information("Fetching all employees.");
+                var response = await _empRepo.getAllAsync();
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"Application returned error: {ex} ");
+                return StatusCode(500, new { error = "Failed to retrieve data" });
+            }
         }
 
         [HttpGet]
         [Route("users")]
-        public async Task<List<Users>> GetUsers()
+        public async Task<IActionResult> GetUsers()
         {
-            return await _usersRepo.getAllAsync();
+            try
+            {
+                Log.Information("Fetching all users.");
+                var response = await _usersRepo.getAllAsync();
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"Application returned error: {ex} ");
+                return StatusCode(500, new { error = "Failed to retrieve data" });
+            }
         }
 
         // TODO: How to make it asynchronous
@@ -67,62 +111,89 @@ namespace MeetingPlannerAPI.Controllers
 
         [HttpGet]
         [Route("meetingRoomInformation/{meetingRoomNo}")]
-        public async Task<IEnumerable<MeetingsPlanned>> GetMeetingRoomInformation(int meetingRoomNo)
+        public async Task<IActionResult> GetMeetingRoomInformation(int meetingRoomNo)
         {
-            var result = (await _meetingsPlannedRepo.getAllAsync()).Where(planned => planned.RoomNo == meetingRoomNo);
-            return result;
+            try
+            {
+                Log.Information("Fetching all meeting room related information.");
+                var response = (await _meetingsPlannedRepo.getAllAsync()).Where(planned => planned.RoomNo == meetingRoomNo);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"Application returned error: {ex} ");
+                return StatusCode(500, new { error = "Failed to retrieve data" });
+            }        
         }
 
         [HttpGet]
         [Route("plannedMeetings/{selectedDate}")]
-        public async Task<IEnumerable<MeetingsPlanned>> GetPlannedMeetings(DateTime selectedDate)
+        public async Task<IActionResult> GetPlannedMeetings(DateTime selectedDate)
         {
-            var allMeetingRooms = await _meetingRoom.getAllAsync();
-            var dt = selectedDate.Date;
-            //var result = _meetingsPlannedRepo.getAll().AsNoTracking().Where(planned => planned.MeetingScheduledOn.Value.Date == dt);
-            var result = from v in allMeetingRooms
-                         join u in (await _meetingsPlannedRepo.getAllAsync()).Where(m => m.MeetingScheduledOn.HasValue && m.MeetingScheduledOn.Value.Date == dt) on v.Roomno equals u.RoomNo into joinedRooms
-                         from m in joinedRooms.DefaultIfEmpty()
-                         select new MeetingsPlanned { RoomNo = v.Roomno, MeetingScheduledOn = m.MeetingScheduledOn, NoOfParticipants = v.Capacity };
-            //select new MeetingsPlanned{ RoomNo =  v.Roomno  };
-            return result;
+            try
+            {
+                Log.Information("Fetching all meeting rooms.");
+                var allMeetingRooms = await _meetingRoom.getAllAsync();
+                var dt = selectedDate.Date;
+                //var result = _meetingsPlannedRepo.getAll().AsNoTracking().Where(planned => planned.MeetingScheduledOn.Value.Date == dt);
+                var result = from v in allMeetingRooms
+                             join u in (await _meetingsPlannedRepo.getAllAsync()).Where(m => m.MeetingScheduledOn.HasValue && m.MeetingScheduledOn.Value.Date == dt) on v.Roomno equals u.RoomNo into joinedRooms
+                             from m in joinedRooms.DefaultIfEmpty()
+                             select new MeetingsPlanned { RoomNo = v.Roomno, MeetingScheduledOn = m.MeetingScheduledOn, NoOfParticipants = v.Capacity };
+                //select new MeetingsPlanned{ RoomNo =  v.Roomno  };
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"Application returned error: {ex} ");
+                return StatusCode(500, new { error = "Failed to retrieve data" });
+            }
         }
 
         [HttpPost]
         [Route("scheduleMeeting/{meetingRoomNo}/{meetingDateTime}/{meetingHours}/{capacity}")]
         public async Task<IActionResult> ScheduleMeetingAsync(int meetingRoomNo, DateTime meetingDateTime, int meetingHours, int capacity)
         {
-            // Validate if meeting room no is valid or not 
-            //Validating  capacity for the supplied meeting room
-            var allMeetingRoomData = await _meetingRoom.getAllAsync();
-            var meetingsPlannedRepo = allMeetingRoomData.Where(meeting => meeting.Roomno == meetingRoomNo && capacity <= meeting.Capacity);
-            if (!meetingsPlannedRepo.Any())
+            try
             {
-                return BadRequest();
+                Log.Information("Fetching all Scheduled Meetings.");
+                // Validate if meeting room no is valid or not 
+                //Validating  capacity for the supplied meeting room
+                var allMeetingRoomData = await _meetingRoom.getAllAsync();
+                var meetingsPlannedRepo = allMeetingRoomData.Where(meeting => meeting.Roomno == meetingRoomNo && capacity <= meeting.Capacity);
+                if (!meetingsPlannedRepo.Any())
+                {
+                    return BadRequest();
+                }
+                var allMeetingsPlanned = await _meetingsPlannedRepo.getAllAsync();
+
+                var plannedDateOverlap = allMeetingsPlanned.Where(planned => planned.RoomNo == meetingRoomNo
+                && DateTime.Now < meetingDateTime
+                && planned.MeetingScheduledOn.Value.AddHours(planned.MeetingScheduledFor.Value) < meetingDateTime);
+                //var plannedDateOverlap = allMeetingsPlanned.Where(planned => planned.MeetingRoomNo == meetingRoomNo && DateTime.Now < meetingDateTime );
+
+                //Validate if no meeting is scheduled on the supplied datetime.
+                if (plannedDateOverlap.Any())
+                {
+                    return BadRequest();
+                }
+
+                var scheduledMeetingRecord = new MeetingsPlanned()
+                {
+                    RoomNo = meetingRoomNo,
+                    MeetingScheduledFor = meetingHours,
+                    MeetingScheduledOn = meetingDateTime
+                };
+
+                _meetingsPlannedRepo.Add(scheduledMeetingRecord);
+                dbContext.SaveChanges();
+                return Ok(scheduledMeetingRecord);
             }
-            var allMeetingsPlanned = await _meetingsPlannedRepo.getAllAsync();
-
-            var plannedDateOverlap = allMeetingsPlanned.Where(planned => planned.RoomNo == meetingRoomNo
-            && DateTime.Now < meetingDateTime
-            && planned.MeetingScheduledOn.Value.AddHours(planned.MeetingScheduledFor.Value) < meetingDateTime);
-            //var plannedDateOverlap = allMeetingsPlanned.Where(planned => planned.MeetingRoomNo == meetingRoomNo && DateTime.Now < meetingDateTime );
-
-            //Validate if no meeting is scheduled on the supplied datetime.
-            if (plannedDateOverlap.Any())
+            catch(Exception ex)
             {
-                return BadRequest();
+                Log.Error($"Application returned error: {ex} ");
+                return StatusCode(500, new { error = "Failed to retrieve data" });
             }
-
-            var scheduledMeetingRecord = new MeetingsPlanned()
-            {
-                RoomNo = meetingRoomNo,
-                MeetingScheduledFor = meetingHours,
-                MeetingScheduledOn = meetingDateTime
-            };
-
-            _meetingsPlannedRepo.Add(scheduledMeetingRecord);
-            dbContext.SaveChanges();
-            return Ok(scheduledMeetingRecord);
         }
     }
 }
