@@ -4,6 +4,7 @@ import Button from "react-bootstrap/Button";
 import Bgr from "../assets/Bgr-image.jpg";
 import { Link, useNavigate } from "react-router-dom";
 import React, { useReducer, useEffect, useMemo } from "react";
+import {dev_api_url} from './constants';
 
 const initialState = {
   email: "",
@@ -45,8 +46,8 @@ export default function SignIn() {
             Password: formState.password,
           }),
         };
-
-        fetch("https://localhost:44352/authenticate", requestOptions)
+        console.log(dev_api_url);
+        fetch(dev_api_url + "authenticate", requestOptions)
           .then((response) => response.text())
           .then((result) => {
             // Storing the token

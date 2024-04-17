@@ -5,11 +5,11 @@ import "bootstrap";
 import Header from "./Header";
 import Navbar from "./Navbar";
 import SelectedDateContext from "../context/SelectedDateContext";
-import BookMeetingSlotPopUp from  "./BookMeetingSlotPopUp";
+import BookMeetingSlotPopUp from "./BookMeetingSlotPopUp";
+import { dev_api_url } from "./constants";
 
 export default function Dashboard() {
-
-  const[showPopup, setShowPopup] = useState(false);
+  const [showPopup, setShowPopup] = useState(false);
 
   var selectedDate = useContext(SelectedDateContext).selectedDate;
   const [plannedMeetingRooms, setPlannedMeetingRooms] = useState([]);
@@ -21,7 +21,7 @@ export default function Dashboard() {
     headers: header,
   };
 
-  const envUrl = "https://localhost:44352/plannedMeetings/";
+  const envUrl = dev_api_url + "plannedMeetings/";
   useEffect(() => {
     fetch(envUrl + selectedDate.toISOString(), requestOptions)
       .then((response) => response.json()) // Parse the response as JSON
@@ -37,7 +37,10 @@ export default function Dashboard() {
 
   return (
     <>
-    <BookMeetingSlotPopUp show={showPopup} close={() => setShowPopup(false)}/>
+      <BookMeetingSlotPopUp
+        show={showPopup}
+        close={() => setShowPopup(false)}
+      />
       <Header />
       <div class="container-fluid">
         <div class="row">
@@ -52,7 +55,9 @@ export default function Dashboard() {
                         <div
                           className="card mb-4 rounded-3 shadow-sm pe-auto"
                           onClick={
-                            room.meetingScheduledOn ? undefined : () => setShowPopup(true)
+                            room.meetingScheduledOn
+                              ? undefined
+                              : () => setShowPopup(true)
                           }
                           style={{
                             cursor: room.meetingScheduledOn ? "" : `pointer`,
