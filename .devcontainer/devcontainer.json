@@ -25,7 +25,8 @@
 				"mutantdino.resourcemonitor",
 				"bierner.github-markdown-preview",
 				"EditorConfig.EditorConfig",
-				"chrisdias.vscode-opennewinstance"
+				"chrisdias.vscode-opennewinstance",
+				 "ms-dotnettools.csdevkit"
 			]
 		}
 	},
